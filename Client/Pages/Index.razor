@@ -1,5 +1,38 @@
 ﻿@page "/"
+@page "/search/{searchText}/{page:int}"
+@page "/{categoryUrl}"
+@inject IProductService ProductService
 
 <PageTitle>Index</PageTitle>
+@if (this is { CategoryUrl: null, SearchText: null })
+{
+    <FeaturedProducts />
+}
+else
+{
+    <ProductList />
+}
 
-<ProductList/>
+
+
+@code {
+    [Parameter] public string? CategoryUrl { get; set; }
+    [Parameter] public string? SearchText { get; set; }
+    [Parameter] public int Page { get; set; } = 1;
+    protected override async Task OnParametersSetAsync()
+    {
+        // as the <ProductList/> inited, the event added;
+        // as we got the products, invoked;
+        // since injected service is singleton in the scope
+        // so the event was invoked
+        // the component <ProductList/> refreshed;
+        if (SearchText is { })
+        {
+            await ProductService.SearchProducts(SearchText, Page);
+        }
+        else
+        {
+            await ProductService.GetProductsAsync(CategoryUrl);
+        }
+    }
+}

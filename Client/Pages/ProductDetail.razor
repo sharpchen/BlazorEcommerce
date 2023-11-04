@@ -1,0 +1,107 @@
+﻿@page "/product/{id:int}"
+@inject IProductService ProductService
+@inject ICartService CartService
+
+@if (_product is null)
+{
+	<span>@_message</span>
+}
+else
+{
+	<div class="media">
+		<a href="@_product.ImageUrl">
+			<div class="media-img-wrapper mr-2">
+				<img class="media-img" src="@_product.ImageUrl" alt="@_product.Title">
+			</div>
+		</a>
+		<div class="media-body">
+			<h2 class="mb-0">@_product.Title</h2>
+			<p>@_product.Description</p>
+			@if (_product is { Variants: { Count: > 0 } and var vs })
+			{
+				<div class="mb-3">
+					<select class="form-select" @bind="_currentTypeId">
+						@foreach (var v in vs)
+						{
+							<option value="@v.ProductTypeId">
+								@v.ProductType?.Name
+							</option>
+						}
+					</select>
+				</div>
+			}
+			@if (GetSelectedVariant() is var variant and { })
+			{
+				if (variant.OriginalPrice > variant.Price)
+				{
+					<h6 class="text-muted original-price">
+						$@variant.OriginalPrice
+					</h6>
+				}
+				<h4 class="price">
+					$@variant.Price
+				</h4>
+			}
+		</div>
+	</div>
+	if (GetSelectedVariant() is { } and var sv)
+	{
+		<button class="btn btn-primary"
+			@onclick="async() => { await AddToCart(); await UpdateItemAddedStatus(sv.ProductId, sv.ProductTypeId); }">
+			<i class="oi oi-cart"></i>
+			&nbsp;&nbsp;&nbsp;@_addedStatus
+		</button>
+	}
+}
+
+@code {
+	private Product? _product;
+	private string _message = string.Empty;
+	private int _currentTypeId = 1;
+	private string _addedStatus = "Add to cart";
+	[Parameter] public int Id { get; set; }
+	protected override async Task OnParametersSetAsync()
+	{
+		_message = "Loading product...";
+		var r = await ProductService.GetProductAsync(Id);
+		if (r.Success)
+		{
+			_product = r.Data;
+			if (_product is { Variants: { Count: > 0 } })
+			{
+				_currentTypeId = _product.Variants[0].ProductTypeId;
+			}
+		}
+		else
+		{
+			_message = r.Message;
+		}
+	}
+	public ProductVariant? GetSelectedVariant() =>
+	_product?.Variants.FirstOrDefault(x => x.ProductTypeId == _currentTypeId);
+
+	private async Task AddToCart()
+	{
+		var product = GetSelectedVariant();
+		var cart = new CartItem
+			{
+				ProductId = product!.ProductId,
+				ProductTypeId = product.ProductTypeId
+			};
+		if (!(await CartService.CartContains(product.ProductId, product.ProductTypeId)))
+		{
+			await CartService.AddToCart(cart);
+		}
+	}
+	private async Task UpdateItemAddedStatus(int productId, int productTypeId)
+	{
+		if (await CartService.CartContains(productId, productTypeId))
+		{
+			_addedStatus = "Added in cart";
+		}
+		else
+		{
+			_addedStatus = "Add to cart";
+		}
+	}
+}

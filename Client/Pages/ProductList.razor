@@ -1,0 +1,52 @@
+﻿@inject IProductService ProductService
+@implements IDisposable
+
+
+@if (ProductService.Products is null or { Count: 0 })
+{
+	<span>@ProductService.Message</span>
+}
+else
+{
+	<ul class="list-unstyled">
+		@foreach (var product in ProductService.Products)
+		{
+			<li class="media my-3">
+				<div class="media-img-wrapper mr-2">
+					<a href="@product.ImageUrl">
+						<img class="media-img" src="@product.ImageUrl" alt="@product.Title" />
+					</a>
+				</div>
+				<div>
+					<a href="/product/@product.Id">
+						<h4 class="mb-0">@product.Title</h4>
+					</a>
+					<p>@product.Description</p>
+					<h5 class="price">
+						@product.PriceRange
+					</h5>
+				</div>
+			</li>
+		}
+	</ul>
+	for (var pageNumber = 1; pageNumber <= ProductService.PageCount; pageNumber++)
+	{
+		var btnStyle = pageNumber == ProductService.CurrentPage ? "btn-info" : "btn-outline-info";
+		<a class="btn @btnStyle page-selection" href="/search/@ProductService.LastSearchedText/@pageNumber">
+			@pageNumber
+		</a>
+	}
+}
+
+@code {
+	protected override void OnInitialized()
+	{
+		// Re-render this component when the event invoked;
+		ProductService.ProductsChanged += StateHasChanged;
+
+	}
+	public void Dispose()
+	{
+		ProductService.ProductsChanged -= StateHasChanged;
+	}
+}
